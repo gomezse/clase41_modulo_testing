@@ -38,7 +38,7 @@ const addProduct= async (req, res) => {
     const { title, description, code, price, stock, category} = req.body;
     
     
-    const user = jwt.verify(req.cookies.token, config.secretKeyJWT);
+    // const user = jwt.verify(req.cookies.token, config.secretKeyJWT);
 
     if (!title || !description || !code || !price || !stock || !category) {
         return res.status(400).json({ message: `Required data is misssing` });
@@ -52,13 +52,13 @@ const addProduct= async (req, res) => {
             
 
             if(product){
-                const updatedProduct= productsManager.updateOne(product._id,{...req.body,owner:user.role=='PREMIUM'?user.email:'admin'})
+                const updatedProduct= productsManager.updateOne(product._id,{...req.body,owner:'admin'})
                 res.status(200).json({ message: 'Product updated', product: updatedProduct });
             }
         }
         
         delete req.body.id;
-        const newProduct = await productsManager.createOne({...req.body,owner:user.role=='PREMIUM'?user.email:'admin'});   
+        const newProduct = await productsManager.createOne({...req.body,owner:'admin'});   
         // console.log('new product',newProduct);     
         if (newProduct.code === 11000) {
 
