@@ -129,6 +129,15 @@ class ProductsManager {
             return error;
         }
     }
+
+    async findOne(){
+        try {
+            const product = await productsModel.findOne({});
+            return product;
+        } catch (error) {
+            return error;
+        }
+    }
 }
 
 export const productsManager = new ProductsManager();

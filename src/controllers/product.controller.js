@@ -41,7 +41,7 @@ const addProduct= async (req, res) => {
     // const user = jwt.verify(req.cookies.token, config.secretKeyJWT);
 
     if (!title || !description || !code || !price || !stock || !category) {
-        return res.status(400).json({ message: `Required data is misssing` });
+        return res.status(400).json({ message: `Required data is missing` });
     }
 
    
@@ -67,7 +67,8 @@ const addProduct= async (req, res) => {
         res.status(200).json({ message: 'Product created', product: newProduct });
 
     } catch (error) {
-        CustomError.generateErrorMessage(ErrorsMessages.ERROR_INTERNAL,500,ErrorsName.ERROR_INTERNAL);        
+        res.status(500).json({ message: 'Product not created' });
+        // CustomError.generateErrorMessage(ErrorsMessages.ERROR_INTERNAL,500,ErrorsName.ERROR_INTERNAL);        
     }
 }
 
@@ -86,6 +87,8 @@ const updateProduct =  async (req, res) => {
     const { pid } = req.params;
 
     try {
+        if(!req.body){res.status(400).json({ message: 'No attributes to update', product: {} });}
+        
         const updateResult = await productsManager.updateOne({ _id: pid }, req.body);
 
         if (updateResult.matchedCount === 1) {
@@ -96,8 +99,9 @@ const updateProduct =  async (req, res) => {
             // En caso de que no se encuentre el producto para actualizar
             CustomError.generateErrorMessage(ErrorsMessages.PRODUCT_NOT_FOUND,404,ErrorsName.PRODUCT_NOT_FOUND);        
         }
-    } catch (error) {
-        CustomError.generateErrorMessage(ErrorsMessages.ERROR_INTERNAL,500,ErrorsName.ERROR_INTERNAL);        
+    } catch (error) {                
+        res.status(500).json({ message: 'Product not updated', product: {} });        
+        // CustomError.generateErrorMessage(ErrorsMessages.ERROR_INTERNAL,500,ErrorsName.ERROR_INTERNAL);        
     }
 }
 
