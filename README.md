@@ -1,4 +1,4 @@
-# **Modulo de Testing sobre Products.**
+# **Módulo de Testing sobre Products.**
 > [!IMPORTANT]
 >Documentos en la clase products-supertest.test.js
 
