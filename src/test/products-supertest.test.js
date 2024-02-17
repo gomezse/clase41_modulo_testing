@@ -1,12 +1,35 @@
 import supertest from "supertest";
 import { expect } from "chai";
 import mongoose from "mongoose";
-import "./db.js"; // Assuming this file handles the database connection
+import "./db.js"; 
 import { productsManager } from "../dao/models/mongoose/ProductsManager.js";
 
 const requester = supertest("http://localhost:8084");
 
 describe("Products API", () => {
+  
+  const userRolAdmin={
+    first_name:'name_1',
+    last_name:'surname_1',
+    email:'name1@example.com',
+    password:'123' ,
+    role:'ADMIN'  
+  }
+  const userRolUser={
+    first_name:'name_2',
+    last_name:'surname_2',
+    email:'name2@example.com',
+    password:'123' ,
+    role:'USER'  
+  }
+
+  before(async () => {
+    await mongoose.connection.collection("users").deleteMany({});
+
+     await requester.post('/api/sessions/signup').send(userRolAdmin); 
+     await requester.post('/api/sessions/signup').send(userRolUser); 
+  });
+
   const productMock1 = {
     title: "Producto 1",
     price: 250,
@@ -25,17 +48,33 @@ describe("Products API", () => {
     category: "categoria del producto 2",
   };
 
+  
+  let cookie;
+
+  beforeEach(async () => {
+    const login = await requester.post('/api/sessions/login').send(userRolAdmin); 
+    cookie ={
+      name:login.headers['set-cookie'][0].split('=')[0],
+      value:login.headers['set-cookie'][0].split('=')[1].split(';')[0]
+    };
+    
+  });
   describe("POST--> add product --> /api/products", () => {
     before(async () => {
       await mongoose.connection.collection("products").deleteMany({});
+
     });
+   
+
 
     it("should return a status 200 when creating a product", async () => {
-      try {
+      try {       
         const response = await requester
           .post("/api/products")
+          .set('Cookie',[`${cookie.name}=${cookie.value}`])
           .send(productMock1);
 
+      
         expect(response.statusCode).to.be.equal(200);
         expect(response.body.message).to.be.equal("Product created");
         expect(response.body.product).to.be.an("object");
@@ -49,6 +88,7 @@ describe("Products API", () => {
       try {
         const response = await requester
           .post("/api/products")
+          .set('Cookie',[`${cookie.name}=${cookie.value}`])
           .send(productMock1);
 
         expect(response.statusCode).to.be.equal(500);
@@ -60,13 +100,38 @@ describe("Products API", () => {
 
     it("should return a status 400 when creating a product with missing data", async () => {
       try {
-        const response = await requester.post("/api/products").send({});
+        const response = await requester
+        .post("/api/products")
+        .set('Cookie',[`${cookie.name}=${cookie.value}`])
+        .send({});
         expect(response.statusCode).to.be.equal(400);
       } catch (error) {
         console.error("Error during test:", error);
         throw error;
       }
     });
+
+    it("should return a 403 status when creating a product with a user that does not have permissions", async () => {
+      try {     
+        const login = await requester.post('/api/sessions/login').send(userRolUser); 
+        const cookieUser ={
+          name:login.headers['set-cookie'][0].split('=')[0],
+          value:login.headers['set-cookie'][0].split('=')[1].split(';')[0]
+        };  
+        const response = await requester
+          .post("/api/products")
+          .set('Cookie',[`${cookieUser.name}=${cookieUser.value}`])
+          .send(productMock1);
+        
+        expect(response.statusCode).to.be.equal(403);
+        expect(response.body.message).to.be.equal("Forbidden");        
+      } catch (error) {
+        console.error("Error during test:", error);
+        throw error;
+      }
+    });
+
+
   });
 
   describe("GET --> Get product by id --> /api/products/:pid", () => {
@@ -102,7 +167,8 @@ describe("Products API", () => {
     it("Should return a 'No Products',not empty body and a status of 200 if there aren't products to list. ", async () => {
       try {
         const product = await productsManager.findOne();
-        await requester.delete(`/api/products/${product._id}`);
+        await requester.delete(`/api/products/${product._id}`)
+        .set('Cookie',[`${cookie.name}=${cookie.value}`]);
         const response = await requester.get(`/api/products`);
 
         expect(response.statusCode).to.be.equal(200);
@@ -116,8 +182,12 @@ describe("Products API", () => {
 
     it("Should return a non-empty array and a status of 200 if there are products to list. ", async () => {
       try {
-        await requester.post("/api/products").send(productMock1);
-        await requester.post("/api/products").send(productMock2);
+        await requester.post("/api/products")
+        .set('Cookie',[`${cookie.name}=${cookie.value}`])
+        .send(productMock1);
+        await requester.post("/api/products")
+        .set('Cookie',[`${cookie.name}=${cookie.value}`])
+        .send(productMock2);
         const response = await requester.get(`/api/products`);
 
         expect(response.statusCode).to.be.equal(200);
@@ -138,6 +208,7 @@ describe("Products API", () => {
         const product = await productsManager.findOne();
         const response = await requester
           .put(`/api/products/${product._id}`)
+          .set('Cookie',[`${cookie.name}=${cookie.value}`])
           .send(productToUpdate);
 
         expect(response._body.message).to.be.equal("Product updated");
@@ -156,6 +227,7 @@ describe("Products API", () => {
         const product = await productsManager.findOne();
         const response = await requester
           .put(`/api/products/${product._id}`)
+          .set('Cookie',[`${cookie.name}=${cookie.value}`])
           .send();
 
         expect(response.status).to.be.equal(500);
@@ -166,16 +238,42 @@ describe("Products API", () => {
         throw error;
       }
     });
+
+
+    it("should return a 403 status when updating a product with a user that does not have permissions", async () => {
+      try {
+        const login = await requester.post('/api/sessions/login').send(userRolUser); 
+        const cookieUser ={
+          name:login.headers['set-cookie'][0].split('=')[0],
+          value:login.headers['set-cookie'][0].split('=')[1].split(';')[0]
+        };  
+        const productToUpdate = {title: "titulo luego del update"};
+
+        const product = await productsManager.findOne();
+        const response = await requester
+          .put(`/api/products/${product._id}`)
+          .set('Cookie',[`${cookieUser.name}=${cookieUser.value}`])
+          .send(productToUpdate);
+        
+        expect(response.statusCode).to.be.equal(403);
+        expect(response.body.message).to.be.equal("Forbidden");      
+      } catch (error) {
+        console.error("Error during test:", error);
+        throw error;
+      }
+    });
+
   });
 
   describe("DELETE --> DELETE product by id --> /api/products/:pid", () => {
     let idToDelete;
     
-    it("Should return the updated product if it was modified correctly", async () => {
+    it("Should return the status 200  if it was deleted correctly", async () => {
       try {      
         const product = await productsManager.findOne();
         idToDelete = product._id;
-        const response = await requester.delete(`/api/products/${idToDelete}`);
+        const response = await requester.delete(`/api/products/${idToDelete}`)
+        .set('Cookie',[`${cookie.name}=${cookie.value}`]);
 
         expect(response.statusCode).to.be.equal(200);        
         expect(response._body.message).to.be.equal("Product deleted");
@@ -188,7 +286,8 @@ describe("Products API", () => {
 
     it("Should return deletedCount = 0 when an already deleted product is deleted ", async () => {
       try {              
-        const response = await requester.delete(`/api/products/${idToDelete}`);
+        const response = await requester.delete(`/api/products/${idToDelete}`)
+        .set('Cookie',[`${cookie.name}=${cookie.value}`]);
         
         expect(response.statusCode).to.be.equal(200);        
         expect(response._body.deletedProduct.deletedCount).to.be.equal(0);        
@@ -197,5 +296,30 @@ describe("Products API", () => {
         throw error;
       }
     });
+
+    it("should return a 403 status when deleting a product with a user that does not have permissions", async () => {
+      try {
+        const login = await requester.post('/api/sessions/login').send(userRolUser); 
+        const cookieUser ={
+          name:login.headers['set-cookie'][0].split('=')[0],
+          value:login.headers['set-cookie'][0].split('=')[1].split(';')[0]
+        };  
+        
+        const product = await productsManager.findOne();
+        idToDelete = product._id;
+        
+        const response = await requester.delete(`/api/products/${idToDelete}`)
+        .set('Cookie',[`${cookieUser.name}=${cookieUser.value}`])
+      
+        
+        expect(response.statusCode).to.be.equal(403);
+        expect(response.body.message).to.be.equal("Forbidden");      
+      } catch (error) {
+        console.error("Error during test:", error);
+        throw error;
+      }
+    });
+
+
   });
 });

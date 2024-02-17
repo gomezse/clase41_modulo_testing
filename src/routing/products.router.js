@@ -7,9 +7,9 @@ const router = Router();
 router.get("/",productController.getAll);
 router.get("/mockingproducts",productController.getMockingProducts);
 router.get("/:pid",productController.getById);
-router.post("/",productController.addProduct);
-router.delete("/:pid",productController.deleteProduct);
-router.put("/:pid",productController.updateProduct);
+router.post("/",authMiddleware("ADMIN,PREMIUM"),productController.addProduct);
+router.delete("/:pid",authMiddleware("ADMIN","PREMIUM"),productController.deleteProduct);
+router.put("/:pid",authMiddleware("ADMIN","PREMIUM"),productController.updateProduct);
 
 
 export default router;

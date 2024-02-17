@@ -1,2 +1,5 @@
-# clase41_modulo_testing
-Modulo de Testing 
+# **Modulo de Testing sobre Products.**
+[!Important]
+>Documentos en la clase products-supertest.test.js
+
+

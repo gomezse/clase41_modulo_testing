@@ -11,7 +11,7 @@ import { ResetToken } from "../models/mongoose/resetToken.model.js";
 
 
 const signup = async (req, res) => {
-  const { first_name, last_name, email, password } = req.body;
+  const { first_name, last_name, email, password ,role} = req.body;
   if (!first_name || !last_name || !email || !password) {
     return res.status(400).json({ message: "Los campos son obligatorios" });
   }
@@ -21,7 +21,7 @@ const signup = async (req, res) => {
     const createdUser = await usersManager.createOne({
       ...req.body,
       password: hashedPassword,
-      role: config.rolUser,
+      role:role?role:config.rolUser,
       cart:cart._id
     });
     
@@ -33,6 +33,7 @@ const signup = async (req, res) => {
 
 const login = async (req, res) => {
   const { email, password } = req.body;
+  console.log('REQ BODY',req.body);
   if (!email || !password) {
     return res.status(400).json({ message: "Todos los campos son requeridos" });
   }
@@ -49,11 +50,11 @@ const login = async (req, res) => {
     //jwt
     const { first_name, last_name, role ,cart} = user;
     const token = generateToken({ first_name, last_name, email, role ,cart});
-   
-    res
-      .status(200)
-      .cookie("token", token, { httpOnly: true })
-      .json({ message: "Bienvenido a la pagina: ", token });
+    // res
+    //   .status(200)
+    //   .cookie("token", token, { maxAge: 3600000 })
+    //   .json({ message: "Bienvenido a la pagina: ", token });
+      res.cookie("token", token, { maxAge: 3600000 }).send({ status:"success",message: "Bienvenido a la pagina: "});
   } catch (error) {
     res.status(500).json({ error });
   }
